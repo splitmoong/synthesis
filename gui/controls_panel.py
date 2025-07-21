@@ -56,7 +56,6 @@ class Knob(QWidget):
     def mouseMoveEvent(self, event):
         if self._dragging:
             delta_y = self._last_mouse_y - event.pos().y()
-            # Adjust sensitivity as needed
             sensitivity = 0.5
             change = int(delta_y * sensitivity)
 
@@ -74,13 +73,12 @@ class Knob(QWidget):
         painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
 
         rect = self.rect()
-        knob_area_height = rect.height() * 0.7  # Allocate top 70% for knob, 30% for text
+        knob_area_height = rect.height() * 0.7
         knob_center_y = knob_area_height / 2
 
         center = self.rect().center()
-        center.setY(int(knob_center_y))  # Adjust center for the knob drawing area
+        center.setY(int(knob_center_y))
 
-        # Ensure radius is an integer for drawEllipse with QPoint center
         radius = int(min(rect.width(), knob_area_height) / 2.5)
 
         # Draw knob background
@@ -107,7 +105,7 @@ class Knob(QWidget):
         # Draw text below the knob
         text_rect = QRectF(0, knob_area_height, rect.width(), rect.height() - knob_area_height)
         painter.setPen(QColor("#e0e0e0"))
-        painter.setFont(QFont("Arial", 10))  # Small font size
+        painter.setFont(QFont("Arial", 10))
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap, self._label_text)
 
         painter.end()
@@ -126,6 +124,8 @@ class ControlsPanel(QWidget):
     grain_density_changed_signal = pyqtSignal(int)  # Emits grain density (e.g., grains per second)
     pitch_shift_changed_signal = pyqtSignal(float)  # Emits pitch shift in semitones
     volume_changed_signal = pyqtSignal(int)  # Emits volume percentage (0-100)
+    # NEW SIGNAL: Emits start position percentage (0-100)
+    start_position_changed_signal = pyqtSignal(int)
 
     def __init__(self):
         """
@@ -140,6 +140,8 @@ class ControlsPanel(QWidget):
         self.grain_density_changed_signal.emit(self.grain_density_knob.value())
         self.pitch_shift_changed_signal.emit(self.pitch_shift_knob.value() / 10.0)
         self.volume_changed_signal.emit(self.volume_knob.value())
+        # Emit initial value for new start position knob
+        self.start_position_changed_signal.emit(self.start_position_knob.value())
 
     def _init_ui(self):
         """
@@ -151,7 +153,7 @@ class ControlsPanel(QWidget):
 
         # --- Playback Controls Group ---
         playback_group = QGroupBox("Playback")
-        playback_group.setFixedHeight(100)  # Ensure sufficient height
+        playback_group.setFixedHeight(100)
         playback_layout = QHBoxLayout(playback_group)
         playback_layout.setSpacing(10)
 
@@ -210,47 +212,48 @@ class ControlsPanel(QWidget):
 
         # --- Granulation Parameters Group ---
         params_group = QGroupBox("Granulation Parameters")
-        # Use QHBoxLayout for knobs to be side-by-side
         params_layout = QHBoxLayout(params_group)
-        params_layout.setSpacing(15)  # Add some spacing between knobs
+        params_layout.setSpacing(15)
 
         # Helper function to create a knob with its value label below it
         def create_knob_column(label_text, min_val, max_val, initial_val):
             v_layout = QVBoxLayout()
-            v_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center content horizontally
+            v_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             knob = Knob(min_val, max_val, initial_val, label_text)
             v_layout.addWidget(knob)
 
             value_label = QLabel(str(initial_val))
             value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            value_label.setStyleSheet("font-size: 12px; color: #b0b0b0;")  # Smaller and slightly dimmer
+            value_label.setStyleSheet("font-size: 12px; color: #b0b0b0;")
             v_layout.addWidget(value_label)
 
             return v_layout, knob, value_label
 
-        # Grain Size Knob
+        # Granulation Knobs
+
+        start_position_v_layout, self.start_position_knob, self.start_position_value_label = \
+            create_knob_column("Start Pos (%)", 0, 100, 0)  # Range 0-100%
+        params_layout.addLayout(start_position_v_layout)
+
         grain_size_v_layout, self.grain_size_knob, self.grain_size_value_label = \
             create_knob_column("Grain Size (ms)", 10, 500, 50)
         params_layout.addLayout(grain_size_v_layout)
 
-        # Grain Density Knob
         grain_density_v_layout, self.grain_density_knob, self.grain_density_value_label = \
             create_knob_column("Grain Density (g/s)", 1, 100, 10)
         params_layout.addLayout(grain_density_v_layout)
 
-        # Pitch Shift Knob
         pitch_shift_v_layout, self.pitch_shift_knob, self.pitch_shift_value_label = \
             create_knob_column("Pitch Shift (st)", -120, 120, 0)
         self.pitch_shift_value_label.setText(f"{self.pitch_shift_knob.value() / 10.0:.1f}")
         params_layout.addLayout(pitch_shift_v_layout)
 
-        # Volume Knob
         volume_v_layout, self.volume_knob, self.volume_value_label = \
             create_knob_column("Volume (%)", 0, 100, 100)
         params_layout.addLayout(volume_v_layout)
 
-        params_layout.addStretch(1)  # Push knobs to the left
+        params_layout.addStretch(1)
 
         main_layout.addWidget(params_group)
         main_layout.addStretch(1)
@@ -263,7 +266,7 @@ class ControlsPanel(QWidget):
                 font-weight: bold;
                 color: #e0e0e0;
                 padding-top: 20px;
-                padding-bottom: 10px; /* Add some padding at the bottom for knobs */
+                padding-bottom: 10px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -293,6 +296,8 @@ class ControlsPanel(QWidget):
         self.grain_density_knob.valueChanged.connect(self._update_grain_density)
         self.pitch_shift_knob.valueChanged.connect(self._update_pitch_shift)
         self.volume_knob.valueChanged.connect(self._update_volume)
+        # Connect new start position knob
+        self.start_position_knob.valueChanged.connect(self._update_start_position)
 
     def _update_grain_size(self, value: int):
         self.grain_size_value_label.setText(str(value))
@@ -310,6 +315,11 @@ class ControlsPanel(QWidget):
     def _update_volume(self, value: int):
         self.volume_value_label.setText(str(value))
         self.volume_changed_signal.emit(value)
+
+    #startpos
+    def _update_start_position(self, value: int):
+        self.start_position_value_label.setText(f"{value}%")
+        self.start_position_changed_signal.emit(value)
 
     def on_playback_started(self):
         self.play_button.setEnabled(False)
