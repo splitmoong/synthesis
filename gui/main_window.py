@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox,
     QLabel
 )
-from PyQt6.QtCore import Qt, pyqtSignal # Import pyqtSignal for custom signals
+from PyQt6.QtCore import Qt, pyqtSignal  # Import pyqtSignal for custom signals
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent
 
 # Import components from other modules
@@ -13,7 +13,8 @@ from gui.controls_panel import ControlsPanel
 from audio.audio_loader import AudioLoader
 from audio.granulator_engine import GranulatorEngine
 from audio.audio_player import AudioPlayer
-from utils.constants import DEFAULT_SAMPLE_RATE # Import default sample rate
+from utils.constants import DEFAULT_SAMPLE_RATE  # Import default sample rate
+
 
 class MainWindow(QMainWindow):
     """
@@ -23,20 +24,20 @@ class MainWindow(QMainWindow):
     """
 
     # Custom signal to emit when a new audio file is loaded
-    audio_loaded_signal = pyqtSignal(object, int) # Emits (audio_data, sample_rate)
+    audio_loaded_signal = pyqtSignal(object, int)  # Emits (audio_data, sample_rate)
 
     def __init__(self):
         """
         Initializes the MainWindow, sets up the UI, and connects components.
         """
         super().__init__()
-        self.setWindowTitle("Granulator App")
-        self.setGeometry(100, 100, 1200, 800) # x, y, width, height
+        self.setWindowTitle("Synthesis")
+        self.setGeometry(100, 100, 1200, 800)  # x, y, width, height
 
-        self.setAcceptDrops(True) # Enable drag and drop for the window
+        self.setAcceptDrops(True)  # Enable drag and drop for the window
 
         self.audio_data = None
-        self.sample_rate = DEFAULT_SAMPLE_RATE # Initialize with a default sample rate
+        self.sample_rate = DEFAULT_SAMPLE_RATE  # Initialize with a default sample rate
 
         # Initialize audio components (these will be managed by MainWindow)
         self.granulator_engine = GranulatorEngine(self.audio_data, self.sample_rate)
@@ -55,14 +56,14 @@ class MainWindow(QMainWindow):
 
         # Main vertical layout for the entire window
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10) # Add some padding
-        main_layout.setSpacing(15) # Spacing between widgets
+        main_layout.setContentsMargins(10, 10, 10, 10)  # Add some padding
+        main_layout.setSpacing(15)  # Spacing between widgets
 
         # 1. Waveform Viewer
         self.waveform_viewer = WaveformViewer()
-        self.waveform_viewer.setMinimumHeight(250) # Ensure it has enough space
+        self.waveform_viewer.setMinimumHeight(250)  # Ensure it has enough space
         self.waveform_viewer.setStyleSheet("border: 1px solid #444; border-radius: 8px; background-color: #2a2a2a;")
-        main_layout.addWidget(self.waveform_viewer, 3) # Give it more vertical stretch
+        main_layout.addWidget(self.waveform_viewer, 3)  # Give it more vertical stretch
 
         # Add a placeholder label for drag and drop instructions
         self.drag_drop_label = QLabel("Drag & Drop an Audio File (WAV, MP3) Here")
@@ -79,11 +80,10 @@ class MainWindow(QMainWindow):
         """)
         main_layout.addWidget(self.drag_drop_label)
 
-
         # 2. Controls Panel
         self.controls_panel = ControlsPanel()
         self.controls_panel.setStyleSheet("border: 1px solid #444; border-radius: 8px; background-color: #333;")
-        main_layout.addWidget(self.controls_panel, 1) # Give it less vertical stretch
+        main_layout.addWidget(self.controls_panel, 1)  # Give it less vertical stretch
 
         # Set a dark theme for the window
         self.setStyleSheet("""
@@ -119,7 +119,6 @@ class MainWindow(QMainWindow):
         self.audio_player.playback_started_signal.connect(self.controls_panel.on_playback_started)
         self.audio_player.playback_stopped_signal.connect(self.controls_panel.on_playback_stopped)
 
-
     def dragEnterEvent(self, event: QDragEnterEvent):
         """
         Handles drag-enter events to determine if the dragged data can be accepted.
@@ -153,7 +152,7 @@ class MainWindow(QMainWindow):
         Loads an audio file, updates the waveform viewer, and sets the
         audio data for the granulator engine.
         """
-        self.drag_drop_label.hide() # Hide the drag and drop label once a file is loaded
+        self.drag_drop_label.hide()  # Hide the drag and drop label once a file is loaded
 
         # Load audio using the AudioLoader
         audio_data, sample_rate = AudioLoader.load_audio(filepath)
@@ -173,4 +172,3 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Loading Error", f"Could not load audio file: {os.path.basename(filepath)}")
             # If loading fails, show the drag and drop label again
             self.drag_drop_label.show()
-
