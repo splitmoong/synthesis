@@ -1,5 +1,3 @@
-# GranulatorApp/gui/waveform_viewer.py
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -46,13 +44,19 @@ class WaveformViewer(QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.layout().addWidget(self.canvas)
 
+        self.canvas.setStyleSheet("""
+            background-color: transparent;
+            border: none;
+        """)
+
         self.ax = self.figure.add_subplot(111)
         self.ax.set_facecolor('#2a2a2a')
 
-        self.ax.set_xlabel("Time (s)", color='#e0e0e0')
-        self.ax.set_ylabel("Amplitude", color='#e0e0e0')
-        self.ax.tick_params(axis='x', colors='#e0e0e0')
-        self.ax.tick_params(axis='y', colors='#e0e0e0')
+        self.ax.set_xlabel("")
+        self.ax.set_ylabel("")
+        self.ax.set_xticks([])
+        self.ax.set_yticks([])
+        self.ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
         self.ax.spines['bottom'].set_color('#666')
         self.ax.spines['top'].set_color('#666')
         self.ax.spines['right'].set_color('#666')
@@ -66,6 +70,14 @@ class WaveformViewer(QWidget):
         # They will be hidden if no audio is loaded, but their objects will exist.
         self._draw_granulation_visuals()
         self.canvas.draw()  # Draw the initial empty plot with hidden elements
+
+        # self.setStyleSheet("""
+        #     WaveformViewer {
+        #         border: 1px solid #555;
+        #         border-radius: 10px;
+        #         background-color: #2a2a2a;
+        #     }
+        # """)
 
     def set_overlay_text(self, text: str):
         """
@@ -100,9 +112,12 @@ class WaveformViewer(QWidget):
 
             self.ax.plot(time, self.audio_data, color='#00aaff', linewidth=0.5)
 
-            self.ax.set_xlabel("Time (s)", color='#e0e0e0')
-            self.ax.set_ylabel("Amplitude", color='#e0e0e0')
-            self.ax.set_title("Audio Waveform", color='#e0e0e0')
+            # Removed redundant label and tick settings here to prevent resetting labels
+            # self.ax.set_xlabel("Time (s)", color='#e0e0e0')
+            # self.ax.set_ylabel("Amplitude", color='#e0e0e0')
+            # from matplotlib import rcParams
+            # rcParams.update({'font.size': 8})  # Smaller font for tick labels
+            # self.ax.tick_params(axis='both', which='major', labelsize=8, length=3)
             self.ax.set_xlim(0, self.total_audio_duration_seconds)
             y_min = np.min(self.audio_data)
             y_max = np.max(self.audio_data)
@@ -119,8 +134,6 @@ class WaveformViewer(QWidget):
             self.set_overlay_text("Drag & Drop an Audio File (WAV, MP3) Here")
 
         self.ax.set_facecolor('#2a2a2a')
-        self.ax.tick_params(axis='x', colors='#e0e0e0')
-        self.ax.tick_params(axis='y', colors='#e0e0e0')
         self.ax.spines['bottom'].set_color('#666')
         self.ax.spines['top'].set_color('#666')
         self.ax.spines['right'].set_color('#666')

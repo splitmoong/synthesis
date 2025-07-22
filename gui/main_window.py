@@ -10,6 +10,7 @@ from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QKeySequence, QShortcut
 # Import components from other modules
 from gui.waveform_viewer import WaveformViewer
 from gui.controls_panel import ControlsPanel
+from gui.effects_panel import EffectsPanel
 from audio.audio_loader import AudioLoader
 from audio.granulator_engine import GranulatorEngine
 from audio.audio_player import AudioPlayer
@@ -28,7 +29,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Synthesis")
-        self.setGeometry(100, 100, 800, 400)
+        self.setGeometry(100, 100, 600, 400)
 
         self.setAcceptDrops(True)
 
@@ -61,14 +62,15 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(8)
 
         # 1. Waveform Viewer and Drag & Drop Overlay
         # Use a QStackedWidget to layer the WaveformViewer and the drag/drop label
         self.waveform_stack = QStackedWidget()
         self.waveform_viewer = WaveformViewer()
         self.waveform_viewer.setMinimumHeight(250)
-        self.waveform_viewer.setStyleSheet("border: 1px solid #444; border-radius: 8px; background-color: #2a2a2a;")
+        # Removed the border style line as requested
+        # self.waveform_viewer.setStyleSheet("border: 1px solid #444; border-radius: 8px; background-color: #2a2a2a;")
 
         # Add WaveformViewer as the first (bottom) widget
         self.waveform_stack.addWidget(self.waveform_viewer)
@@ -80,7 +82,7 @@ class MainWindow(QMainWindow):
             QLabel {
                 font-size: 20px;
                 color: #888;
-                padding: 50px;
+                padding: 10px;
                 border: 2px dashed #666;
                 border-radius: 10px;
                 margin: 20px;
@@ -97,7 +99,17 @@ class MainWindow(QMainWindow):
         # 2. Controls Panel
         self.controls_panel = ControlsPanel()
         self.controls_panel.setStyleSheet("border: 1px solid #444; border-radius: 8px; background-color: #333;")
-        main_layout.addWidget(self.controls_panel, 1)
+        self.controls_panel.setContentsMargins(0, 0, 0, 0)
+        controls_wrapper = QWidget()
+        controls_layout = QVBoxLayout(controls_wrapper)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
+        controls_layout.setSpacing(0)
+        controls_layout.addWidget(self.controls_panel)
+        main_layout.addWidget(controls_wrapper, 1)
+
+        #self.effects_panel = EffectsPanel()
+        #self.effects_panel.setStyleSheet("border: 1px solid #444; border-radius: 8px; background-color: #333;")
+        #main_layout.addWidget(self.effects_panel, 1)
 
         # Set a dark theme for the window
         self.setStyleSheet("""

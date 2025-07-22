@@ -133,11 +133,12 @@ class ControlsPanel(QWidget):
         main_layout.setContentsMargins(15, 15, 15, 15)
         main_layout.setSpacing(10)
 
-        params_group = QGroupBox("Granulation Parameters")
+        params_group = QGroupBox("")
         params_vertical_layout = QVBoxLayout(params_group)
         params_vertical_layout.setSpacing(15)  # Increased spacing within the group
 
         knobs_and_buttons_h_layout = QHBoxLayout()
+        knobs_and_buttons_h_layout.setContentsMargins(0, 0, 0, 0)
         knobs_and_buttons_h_layout.setSpacing(10)
         self.knobs_layout = knobs_and_buttons_h_layout
 
@@ -169,6 +170,10 @@ class ControlsPanel(QWidget):
 
             return v_layout, knob, value_label
 
+        start_position_v_layout, self.start_position_knob, self.start_position_value_label = \
+            create_knob_column("Start Pos (%)", 0, 100, 0)
+        knobs_and_buttons_h_layout.addLayout(start_position_v_layout)
+
         grain_size_v_layout, self.grain_size_knob, self.grain_size_value_label = \
             create_knob_column("Grain Size (%)", 1, 100, 50)
         knobs_and_buttons_h_layout.addLayout(grain_size_v_layout)
@@ -185,10 +190,6 @@ class ControlsPanel(QWidget):
         volume_v_layout, self.volume_knob, self.volume_value_label = \
             create_knob_column("Volume (%)", 0, 100, 100)
         knobs_and_buttons_h_layout.addLayout(volume_v_layout)
-
-        start_position_v_layout, self.start_position_knob, self.start_position_value_label = \
-            create_knob_column("Start Pos (%)", 0, 100, 0)
-        knobs_and_buttons_h_layout.addLayout(start_position_v_layout)
 
         knobs_and_buttons_h_layout.addStretch(1)
 
@@ -250,9 +251,9 @@ class ControlsPanel(QWidget):
             QGroupBox {
                 border: 1px solid #555;
                 border-radius: 8px;
-                margin-top: 10px;
                 font-weight: bold;
                 color: #e0e0e0;
+                padding-top: 40px;
                 padding-bottom: 10px;
             }
             QGroupBox::title {
@@ -262,7 +263,8 @@ class ControlsPanel(QWidget):
                 background-color: #282828;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
-                padding-top: 15px; /* Increased top padding */
+                /* FIX: Increase padding-top here for more space below the title */
+                padding-top: 10px; /* You can adjust this value (e.g., 20px, 30px) */
             }
             QLabel {
                 color: #e0e0e0;
