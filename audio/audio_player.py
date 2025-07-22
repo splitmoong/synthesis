@@ -36,7 +36,7 @@ class AudioPlayer(QObject):
         self._pyaudio = pyaudio.PyAudio()
         self._stream = None
         self._is_playing = False
-        self._volume = 1.0  # Initial volume (0.0 to 1.0)
+        self._volume = 1.0
 
         # NEW: Playback position tracker (in frames)
         self._playback_position_frames = 0
