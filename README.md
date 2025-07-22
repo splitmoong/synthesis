@@ -1,4 +1,5 @@
 # Synthesis
-Synthesis is an interactive desktop application built with PyQt6 that enables real-time audio manipulation using granular synthesis. Drop in a .wav or .mp3 file and tweak parameters to hear your sound evolve in real time.
+Synthesis is an interactive desktop application built with PyQt6 that enables real-time audio manipulation using granular synthesis. Drop in an audio file and tweak the parameters to hear your sound evolve in real time.
 
-<img width="946" height="675" alt="Screenshot 2025-07-22 at 1 59 47 PM" src="https://github.com/user-attachments/assets/fbd16603-4ac2-40c0-bcf4-1a18ab1ed0e5" />
+<img width="854" height="486" alt="Screenshot 2025-07-22 at 6 37 34 PM" src="https://github.com/user-attachments/assets/845383a7-1803-4889-bf16-fb6b79ba1f36" />
+
