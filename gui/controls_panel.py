@@ -237,7 +237,7 @@ class ControlsPanel(QWidget):
         params_layout.addLayout(start_position_v_layout)
 
         grain_size_v_layout, self.grain_size_knob, self.grain_size_value_label = \
-            create_knob_column("Grain Size (ms)", 10, 500, 50)
+            create_knob_column("Grain Size (%)", 1, 100, 50)  # Range from 1% to 100%
         params_layout.addLayout(grain_size_v_layout)
 
         grain_density_v_layout, self.grain_density_knob, self.grain_density_value_label = \
@@ -300,7 +300,9 @@ class ControlsPanel(QWidget):
         self.start_position_knob.valueChanged.connect(self._update_start_position)
 
     def _update_grain_size(self, value: int):
-        self.grain_size_value_label.setText(str(value))
+        """Updates the grain size label and emits the signal."""
+        # NEW: Display as percentage
+        self.grain_size_value_label.setText(f"{value}%")
         self.grain_size_changed_signal.emit(value)
 
     def _update_grain_density(self, value: int):
