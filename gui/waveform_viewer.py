@@ -8,6 +8,7 @@ import matplotlib.patches as patches
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPainter, QFont  # NEW: Import QPainter and QFont for custom paintEvent
 
 
 class WaveformViewer(QWidget):
@@ -16,31 +17,28 @@ class WaveformViewer(QWidget):
     """
 
     def __init__(self):
-        """
-        Initializes the WaveformViewer, setting up the Matplotlib figure
-        and canvas.
-        """
         super().__init__()
         self.audio_data = None
         self.sample_rate = None
-        self.total_audio_duration_seconds = 0.0  # Store total duration
+        self.total_audio_duration_seconds = 0.0
+
+        # Overlay text for drag & drop or no audio loaded
+        self.overlay_text = "Drag & Drop an Audio File (WAV, MP3) Here"
+        self.show_overlay = True  # Initial state is to show overlay
 
         # --- Granulation Visuals State ---
-        self.start_pos_percentage = 0  # 0-100% of audio duration
-        self.grain_size_percentage = 50  # NEW: Grain length as percentage (0-100)
-        self.current_playback_pos_seconds = 0.0  # Current playback head position
+        self.start_pos_percentage = 0
+        self.grain_size_percentage = 50
+        self.current_playback_pos_seconds = 0.0
 
-        # Matplotlib plot elements for dynamic updates (store as instance variables)
+        # Matplotlib plot elements for dynamic updates (initialized to None)
         self.start_pos_line = None
         self.grain_region_patch = None
         self.playback_cursor_line = None
 
-        self._init_ui()
+        self._init_ui()  # This will now also call _draw_granulation_visuals
 
     def _init_ui(self):
-        """
-        Sets up the layout and embeds the Matplotlib canvas.
-        """
         self.setLayout(QVBoxLayout())
         self.layout().setContentsMargins(0, 0, 0, 0)
 
@@ -51,7 +49,6 @@ class WaveformViewer(QWidget):
         self.ax = self.figure.add_subplot(111)
         self.ax.set_facecolor('#2a2a2a')
 
-        # Set initial plot properties (dark theme friendly)
         self.ax.set_xlabel("Time (s)", color='#e0e0e0')
         self.ax.set_ylabel("Amplitude", color='#e0e0e0')
         self.ax.tick_params(axis='x', colors='#e0e0e0')
@@ -65,28 +62,38 @@ class WaveformViewer(QWidget):
         self.ax.set_title("No Audio Loaded", color='#e0e0e0')
         self.figure.tight_layout()
 
+        # Call _draw_granulation_visuals here to create the initial plot elements
+        # They will be hidden if no audio is loaded, but their objects will exist.
+        self._draw_granulation_visuals()
+        self.canvas.draw()  # Draw the initial empty plot with hidden elements
+
+    def set_overlay_text(self, text: str):
+        """
+        Sets the text to display as an overlay and controls its visibility.
+        An empty string will hide the overlay.
+        """
+        self.overlay_text = text
+        self.show_overlay = bool(text)  # True if text is non-empty, False otherwise
+        self.update()  # Request a repaint to show/hide the overlay
+
     def update_waveform(self, audio_data: np.ndarray, sample_rate: int):
-        """
-        Updates the waveform display with new audio data.
-        """
         self.audio_data = audio_data
         self.sample_rate = sample_rate
 
-        self.ax.clear()  # Clear the previous plot elements (including old lines/patches)
+        self.ax.clear()
 
-        # Reset line/patch references so _draw_granulation_visuals creates them fresh
+        # Crucially, after ax.clear(), we must reset the references so _draw_granulation_visuals recreates them.
         self.start_pos_line = None
         self.grain_region_patch = None
         self.playback_cursor_line = None
 
         if self.audio_data is not None and self.sample_rate > 0 and len(self.audio_data) > 0:
-            # NEW: Check for NaN/Inf in audio_data before plotting
             if np.isnan(self.audio_data).any() or np.isinf(self.audio_data).any():
                 print("Warning: Waveform data contains NaN or Inf values. Not plotting waveform.")
                 self.ax.set_title("Audio Data Error (NaN/Inf)", color='red')
                 self.canvas.draw()
-                self.total_audio_duration_seconds = 0.0  # Set to 0 if data is invalid
-                return  # Exit if data is invalid
+                self.total_audio_duration_seconds = 0.0
+                return
 
             self.total_audio_duration_seconds = len(self.audio_data) / self.sample_rate
             time = np.linspace(0, self.total_audio_duration_seconds, num=len(self.audio_data))
@@ -102,11 +109,15 @@ class WaveformViewer(QWidget):
             padding = (y_max - y_min) * 0.1
             self.ax.set_ylim(y_min - padding, y_max + padding)
 
+            # Hide overlay text when audio is loaded successfully
+            self.set_overlay_text("")
+
         else:
             self.ax.set_title("No Audio Loaded", color='#e0e0e0')
             self.total_audio_duration_seconds = 0.0
+            # Show overlay text if audio loading fails or no audio
+            self.set_overlay_text("Drag & Drop an Audio File (WAV, MP3) Here")
 
-        # Reapply dark theme specific styles after clear()
         self.ax.set_facecolor('#2a2a2a')
         self.ax.tick_params(axis='x', colors='#e0e0e0')
         self.ax.tick_params(axis='y', colors='#e0e0e0')
@@ -116,30 +127,19 @@ class WaveformViewer(QWidget):
         self.ax.spines['left'].set_color('#666')
         self.ax.grid(True, linestyle=':', alpha=0.6, color='#555')
 
-        self._draw_granulation_visuals()  # Draw indicators for the (possibly new) audio
+        self._draw_granulation_visuals()
         self.figure.tight_layout()
         self.canvas.draw()
 
-    # MODIFIED: grain_size_perc instead of grain_size_ms
     def update_granulation_visuals(self, start_pos_perc: int, grain_size_perc: int,
                                    current_playback_pos_seconds: float = 0.0):
-        """
-        Updates the parameters that define the visual indicators for granulation
-        and redraws them.
-
-        Args:
-            start_pos_perc (int): Start position as a percentage (0-100).
-            grain_size_perc (int): Grain size as a percentage (0-100) of total duration.
-            current_playback_pos_seconds (float): Current playback time in seconds (for cursor).
-        """
         self.start_pos_percentage = start_pos_perc
-        self.grain_size_percentage = grain_size_perc  # Store as percentage
+        self.grain_size_percentage = grain_size_perc
         self.current_playback_pos_seconds = current_playback_pos_seconds
 
-        # Only redraw indicators if audio data is loaded and valid
         if self.audio_data is not None and self.sample_rate > 0 and self.total_audio_duration_seconds > 0:
             self._draw_granulation_visuals()
-            self.canvas.draw_idle()  # Use draw_idle for more efficient updates (prevents flickering)
+            self.canvas.draw_idle()
         else:
             # If no audio or invalid, hide any existing visuals
             if self.start_pos_line: self.start_pos_line.set_visible(False)
@@ -148,61 +148,48 @@ class WaveformViewer(QWidget):
             self.canvas.draw_idle()
 
     def _draw_granulation_visuals(self):
-        """
-        Draws/updates the visual indicators for granulation (start line, grain region, cursor).
-        This method is called by update_waveform and update_granulation_visuals.
-        """
         if self.audio_data is None or self.total_audio_duration_seconds == 0:
-            # Hide existing visuals if no audio is loaded
+            # Hide visuals if no audio is loaded.
             if self.start_pos_line: self.start_pos_line.set_visible(False)
             if self.grain_region_patch: self.grain_region_patch.set_visible(False)
             if self.playback_cursor_line: self.playback_cursor_line.set_visible(False)
             return
 
-        # --- Calculate positions based on percentages ---
         start_pos_seconds = self.total_audio_duration_seconds * (self.start_pos_percentage / 100.0)
-        # Clamp start_pos_seconds to ensure it's within bounds
         start_pos_seconds = max(0.0, min(start_pos_seconds, self.total_audio_duration_seconds))
 
-        # NEW: Calculate grain_length_seconds from percentage
         grain_length_seconds = self.total_audio_duration_seconds * (self.grain_size_percentage / 100.0)
-        # Ensure grain_length_seconds is positive for meaningful display
         if grain_length_seconds <= 0.0:
-            grain_length_seconds = 0.001  # Smallest visible length
+            grain_length_seconds = 0.001
 
         # --- Draw/Update Start Position Indicator ---
         if self.start_pos_line is None:
             self.start_pos_line = self.ax.axvline(
-                x=start_pos_seconds, # This is fine for creation
-                color='#FFA500',  # Orange
+                x=start_pos_seconds,
+                color='#FFA500',
                 linestyle='--',
                 linewidth=2,
                 label='Start Position'
             )
         else:
-            # FIX: Pass a sequence (list) to set_xdata
-            self.start_pos_line.set_xdata([start_pos_seconds]) # Pass as a list
-            self.start_pos_line.set_visible(True)  # Ensure visible if it was hidden
+            self.start_pos_line.set_xdata([start_pos_seconds])
+            self.start_pos_line.set_visible(True)
 
         # --- Draw/Update Granulation Region (Shaded Rectangle) ---
         region_start_s = start_pos_seconds
         region_end_s = start_pos_seconds + grain_length_seconds
 
-        # Ensure the region does not exceed audio boundaries (visual clamp)
         region_end_s = min(region_end_s, self.total_audio_duration_seconds)
-
-        # Ensure region width is non-negative
         rect_width = max(0.0, region_end_s - region_start_s)
 
         if self.grain_region_patch is None:
-            # Create a rectangle patch
             self.grain_region_patch = patches.Rectangle(
-                (region_start_s, self.ax.get_ylim()[0]),  # (x, y) bottom-left corner
-                rect_width,  # width
-                self.ax.get_ylim()[1] - self.ax.get_ylim()[0],  # height (full axis height)
-                facecolor='#00FFFF',  # Cyan
-                alpha=0.2,  # Semi-transparent
-                edgecolor='none',  # No border
+                (region_start_s, self.ax.get_ylim()[0]),
+                rect_width,
+                self.ax.get_ylim()[1] - self.ax.get_ylim()[0],
+                facecolor='#00FFFF',
+                alpha=0.2,
+                edgecolor='none',
                 label='Granulation Region'
             )
             self.ax.add_patch(self.grain_region_patch)
@@ -210,54 +197,51 @@ class WaveformViewer(QWidget):
             self.grain_region_patch.set_xy((region_start_s, self.ax.get_ylim()[0]))
             self.grain_region_patch.set_width(rect_width)
             self.grain_region_patch.set_height(
-                self.ax.get_ylim()[1] - self.ax.get_ylim()[0])  # Update height in case y-limits changed
-            self.grain_region_patch.set_visible(True)  # Ensure visible if it was hidden
+                self.ax.get_ylim()[1] - self.ax.get_ylim()[0])
+            self.grain_region_patch.set_visible(True)
 
         # --- Draw/Update Playback Cursor (Moving Vertical Line) ---
-        # This line moves as the audio plays, showing the current read head within the loop.
-        playback_cursor_s = 0.0  # Default if not valid
+        playback_cursor_s = 0.0
 
-        if self.total_audio_duration_seconds > 0:  # Ensure audio loaded
+        if self.total_audio_duration_seconds > 0:
             loop_start_s = start_pos_seconds
-            loop_end_s = region_end_s  # This is the visual end of the loop
+            loop_end_s = region_end_s
 
-            loop_duration_s = max(0.001, loop_end_s - loop_start_s)  # Ensure positive loop duration
+            loop_duration_s = max(0.001, loop_end_s - loop_start_s)
 
-            # Calculate current_playback_pos_seconds relative to the loop start
             current_pos_relative_to_loop_start = self.current_playback_pos_seconds - loop_start_s
 
-            # Use modulo to make the cursor loop within the loop_duration_s
-            # For pure positive modulo behavior: (a % n + n) % n
-            # Ensure the current_pos_relative_to_loop_start is non-negative for modulo logic
             if current_pos_relative_to_loop_start < 0:
-                # If the playback position is before the loop start,
-                # effectively treat it as if it's at loop_start_s for the modulo calculation,
-                # or just snap to loop_start_s for the visual.
-                # Let's snap to loop_start_s for simplicity, then the modulo will handle further movement
-                cursor_pos_in_loop = 0.0
+                playback_cursor_s = loop_start_s
             else:
                 cursor_pos_in_loop = np.fmod(current_pos_relative_to_loop_start, loop_duration_s)
+                playback_cursor_s = loop_start_s + cursor_pos_in_loop
 
-            playback_cursor_s = loop_start_s + cursor_pos_in_loop
-
-            # Ensure cursor stays within the visual bounds (loop_start_s to loop_end_s)
             playback_cursor_s = max(loop_start_s, min(playback_cursor_s, loop_end_s))
 
-        # Check for valid cursor position (could be 0.0 if no audio or initial state)
         if playback_cursor_s >= 0 and playback_cursor_s <= self.total_audio_duration_seconds:
             if self.playback_cursor_line is None:
                 self.playback_cursor_line = self.ax.axvline(
                     x=playback_cursor_s,
-                    color='#FF0000',  # Red
+                    color='#FF0000',
                     linestyle='-',
                     linewidth=1.5,
                     label='Playback Cursor'
                 )
             else:
-                # FIX: Pass a sequence (list) to set_xdata
                 self.playback_cursor_line.set_xdata([playback_cursor_s])
-                self.playback_cursor_line.set_visible(True)  # Ensure visible
+                self.playback_cursor_line.set_visible(True)
         else:
-            # If cursor position is invalid (e.g., negative, or outside total duration), hide it
             if self.playback_cursor_line:
                 self.playback_cursor_line.set_visible(False)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.show_overlay and self.overlay_text:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setPen(Qt.GlobalColor.gray)
+            font = painter.font()
+            font.setPointSize(16)
+            painter.setFont(font)
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.overlay_text)
